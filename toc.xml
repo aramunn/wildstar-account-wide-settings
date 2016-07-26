@@ -1,0 +1,3 @@
+<Addon Author="Aramunn" APIVersion="12" Version="12.0" Name="AccountWideSettings" Description="To enable account wide saving of addons.">
+  <Script Name="AccountWideSettings.lua"/>
+</Addon>
