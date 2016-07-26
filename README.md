@@ -1,0 +1,1 @@
+# wildstar-account-wide-settings
