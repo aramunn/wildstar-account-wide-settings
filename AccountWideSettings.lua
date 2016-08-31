@@ -47,21 +47,31 @@ local karrAddons = {
   -- end
 -- end
 
+--filters
+local strFilterSearch = ""
+local bFilterShowCarbine = false
+local bFilterShowCustom = true
+local bFilterShowSelected = true
+local bFilterShowUnselected = true
+
+--enums
 local eColumns = {
   Checkmark = 1,
   Name      = 2,
   Author    = 3,
 }
-
 local eSortPrefix = {
   Selected    = "1",
   Unselected  = "2",
 }
-
 local eSprite = {
   Selected    = "CRB_DialogSprites:sprDialog_Icon_Check",
   Unselected  = "CRB_DialogSprites:sprDialog_Icon_DisabledCheck",
 }
+
+-------------------
+-- addon parsing --
+-------------------
 
 local function InsertAddonInfo(tAddonList, strAddonName)
   if not strAddonName then return end
@@ -117,6 +127,10 @@ local function GetAddonsList()
   return GetAddonsListFromXml(tAddonsXML, strWildstarDir, strSeperator)
 end
 
+-------------
+-- display --
+-------------
+
 local function SetupRow(wndGrid, tAddonInfo)
   local nRow = wndGrid:AddRow(tAddonInfo.strName)
   wndGrid:SetCellText(      nRow, eColumns.Checkmark, ""                                          )
@@ -142,6 +156,10 @@ function AccountWideSettings:LoadMainWindow()
   end
 end
 
+---------------
+-- ui events --
+---------------
+
 function AccountWideSettings:OnGridSelChanged(wndHandler, wndControl, nRow, nCol)
   if nCol ~= eColumns.Checkmark then return end
   local bSelected = not wndControl:GetCellData(nRow, eColumns.Checkmark)
@@ -153,6 +171,10 @@ function AccountWideSettings:OnGridSelChanged(wndHandler, wndControl, nRow, nCol
   wndControl:SetCellSortText( nRow, eColumns.Checkmark, strSortPrefix..strAddon )
 end
 
+------------------
+-- data storage --
+------------------
+
 function AccountWideSettings:OnSave(eLevel)
   if eLevel ~= GameLib.CodeEnumAddonSaveLevel.Account then return nil end
   return self.tSave
@@ -162,6 +184,10 @@ function AccountWideSettings:OnRestore(eLevel, tSave)
   if eLevel ~= GameLib.CodeEnumAddonSaveLevel.Account then return end
   self.tSave = tSave
 end
+
+----------
+-- init --
+----------
 
 function AccountWideSettings:new(o)
   o = o or {}
