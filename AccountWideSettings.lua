@@ -63,18 +63,17 @@ local eSprite = {
   Unselected  = "CRB_DialogSprites:sprDialog_Icon_DisabledCheck",
 }
 
-local function GetAddonInfo(strAddonName)
+local function InsertAddonInfo(tAddonList, strAddonName)
+  if not strAddonName then return end
   local tAddon = Apollo.GetAddon(strAddonName)
   if tAddon and tAddon.OnSave then
     tAddonAllInfo = Apollo.GetAddonInfo(strAddonName)
-    if not tAddonAllInfo then return nil end
-    return {
+    if not tAddonAllInfo then return end
+    table.insert(tAddonList, {
       strName = strAddonName,
       strAuthor = tAddonAllInfo.strAuthor,
       bCarbine = tAddonAllInfo.bCarbine,
-    }
-  else
-    return nil
+    })
   end
 end
 
@@ -91,12 +90,7 @@ local function GetAddonsListFromXml(tAddonXML, strWildstarDir, strSeperator)
         )
         if xmlTOC then strAddonName = xmlTOC:ToTable().Name end
       end
-      if strAddonName then
-        local tAddonInfo = GetAddonInfo(strAddonName)
-        if tAddonInfo then
-          table.insert(tAddonList, tAddonInfo)
-        end
-      end
+      InsertAddonInfo(tAddonList, strAddonName)
     end
   end
   return tAddonList
