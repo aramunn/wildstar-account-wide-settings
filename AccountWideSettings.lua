@@ -215,7 +215,7 @@ function AccountWideSettings:OnDocumentReady()
 end
 
 function AccountWideSettings:OnInterfaceMenuLoaded()
-  local tData = {"AccountWideSettingsInterfaceMenu", "", "CRB_CurrencySprites:sprCashPlatinum"} --TODO
+  local tData = {"AccountWideSettingsInterfaceMenu", "", "BK3:sprHolo_Friends_Account"}
   Event_FireGenericEvent("InterfaceMenuList_NewAddOn", "AccountWideSettings", tData)
 end
 
