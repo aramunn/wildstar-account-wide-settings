@@ -49,10 +49,8 @@ local karrAddons = {
 
 --filters
 local strFilterSearch = ""
-local bFilterShowCarbine = false
 local bFilterShowCustom = true
-local bFilterShowSelected = true
-local bFilterShowUnselected = true
+local bFilterShowCarbine = false
 
 --enums
 local eColumns = {
@@ -135,19 +133,23 @@ local function SkipRow(tAddonInfo)
   local strRegex = ".*"..string.lower(strFilterSearch)..".*"
   local strAddonName = string.lower(tAddonInfo.strName)
   if not string.find(strAddonName, strRegex) then return true end
+  if not bFilterShowCustom and not tAddonInfo.bCarbine then return true end
+  if not bFilterShowCarbine and tAddonInfo.bCarbine then return true end
   return false
 end
 
 local function AddRow(wndGrid, tAddonInfo)
   if SkipRow(tAddonInfo) then return end
-  local nRow = wndGrid:AddRow(tAddonInfo.strName)
-  wndGrid:SetCellText(      nRow, eColumns.Checkmark, ""                                          )
-  wndGrid:SetCellLuaData(   nRow, eColumns.Checkmark, false                                       )
-  wndGrid:SetCellImage(     nRow, eColumns.Checkmark, eSprite.Unselected                          )
-  wndGrid:SetCellSortText(  nRow, eColumns.Checkmark, eSortPrefix.Unselected..tAddonInfo.strName  )
-  wndGrid:SetCellText(      nRow, eColumns.Name,      "   "..tAddonInfo.strName                   )
-  wndGrid:SetCellLuaData(   nRow, eColumns.Name,      tAddonInfo.strName                          )
-  wndGrid:SetCellText(      nRow, eColumns.Author,    "   "..tAddonInfo.strAuthor                 )
+  local strAddonName = tAddonInfo.strName
+  local strAddonAuthor = tAddonInfo.strAuthor
+  local nRow = wndGrid:AddRow(strAddonName)
+  wndGrid:SetCellText(      nRow, eColumns.Checkmark, ""                                    )
+  wndGrid:SetCellLuaData(   nRow, eColumns.Checkmark, false                                 )
+  wndGrid:SetCellImage(     nRow, eColumns.Checkmark, eSprite.Unselected                    )
+  wndGrid:SetCellSortText(  nRow, eColumns.Checkmark, eSortPrefix.Unselected..strAddonName  )
+  wndGrid:SetCellText(      nRow, eColumns.Name,      "   "..strAddonName                   )
+  wndGrid:SetCellLuaData(   nRow, eColumns.Name,      strAddonName                          )
+  wndGrid:SetCellText(      nRow, eColumns.Author,    "   "..strAddonAuthor                 )
 end
 
 local function UpdateAddonsGrid(wndGrid, tAddonsList)
@@ -167,6 +169,8 @@ function AccountWideSettings:LoadMainWindow()
   else
     self.wndMain = Apollo.LoadForm(self.xmlDoc, "Main", nil, self)
     self.wndGrid = self.wndMain:FindChild("Grid")
+    self.wndMain:FindChild("ShowCustom"):SetCheck(bFilterShowCustom)
+    self.wndMain:FindChild("ShowCarbine"):SetCheck(bFilterShowCarbine)
   end
   self.tAddonsList = self.tAddonsList or GetAddonsList()
   if not self.tAddonsList then return end
@@ -190,6 +194,16 @@ end
 
 function AccountWideSettings:OnSearchChanged(wndHandler, wndControl, strText)
   strFilterSearch = strText
+  self:UpdateDisplay()
+end
+
+function AccountWideSettings:OnShowCustomChange(wndHandler, wndControl)
+  bFilterShowCustom = wndControl:IsChecked()
+  self:UpdateDisplay()
+end
+
+function AccountWideSettings:OnShowCarbineChange(wndHandler, wndControl)
+  bFilterShowCarbine = wndControl:IsChecked()
   self:UpdateDisplay()
 end
 
