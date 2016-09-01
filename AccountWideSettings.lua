@@ -130,11 +130,11 @@ end
 -------------
 
 local function SkipRow(tAddonInfo)
+  if not bFilterShowCarbine and tAddonInfo.bCarbine then return true end
+  if not bFilterShowCustom and not tAddonInfo.bCarbine then return true end
   local strRegex = ".*"..string.lower(strFilterSearch)..".*"
   local strAddonName = string.lower(tAddonInfo.strName)
   if not string.find(strAddonName, strRegex) then return true end
-  if not bFilterShowCustom and not tAddonInfo.bCarbine then return true end
-  if not bFilterShowCarbine and tAddonInfo.bCarbine then return true end
   return false
 end
 
