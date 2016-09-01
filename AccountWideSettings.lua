@@ -73,23 +73,23 @@ local eSprite = {
 -- addon parsing --
 -------------------
 
-local function InsertAddonInfo(tAddonList, strAddonName)
+local function InsertAddonInfo(tAddonsList, strAddonName)
   if not strAddonName then return end
   local tAddon = Apollo.GetAddon(strAddonName)
   if tAddon and tAddon.OnSave then
-    tAddonAllInfo = Apollo.GetAddonInfo(strAddonName)
-    if not tAddonAllInfo then return end
-    table.insert(tAddonList, {
+    tAddonInfo = Apollo.GetAddonInfo(strAddonName)
+    if not tAddonInfo then return end
+    table.insert(tAddonsList, {
       strName = strAddonName,
-      strAuthor = tAddonAllInfo.strAuthor,
-      bCarbine = tAddonAllInfo.bCarbine,
+      strAuthor = tAddonInfo.strAuthor,
+      bCarbine = tAddonInfo.bCarbine,
     })
   end
 end
 
-local function GetAddonsListFromXml(tAddonXML, strWildstarDir, strSeperator)
-  local tAddonList = {}
-  for idx, tElement in pairs(tAddonXML) do
+local function GetAddonsListFromXml(tAddonsXML, strWildstarDir, strSeperator)
+  local tAddonsList = {}
+  for idx, tElement in pairs(tAddonsXML) do
     if tElement.__XmlNode == "Addon" then
       local strAddonName
       if tElement.Carbine == "1" then
@@ -100,10 +100,10 @@ local function GetAddonsListFromXml(tAddonXML, strWildstarDir, strSeperator)
         )
         if xmlTOC then strAddonName = xmlTOC:ToTable().Name end
       end
-      InsertAddonInfo(tAddonList, strAddonName)
+      InsertAddonInfo(tAddonsList, strAddonName)
     end
   end
-  return tAddonList
+  return tAddonsList
 end
 
 local function GetAddonsList()
@@ -131,7 +131,15 @@ end
 -- display --
 -------------
 
-local function SetupRow(wndGrid, tAddonInfo)
+local function SkipRow(tAddonInfo)
+  local strRegex = ".*"..string.lower(strFilterSearch)..".*"
+  local strAddonName = string.lower(tAddonInfo.strName)
+  if not string.find(strAddonName, strRegex) then return true end
+  return false
+end
+
+local function AddRow(wndGrid, tAddonInfo)
+  if SkipRow(tAddonInfo) then return end
   local nRow = wndGrid:AddRow(tAddonInfo.strName)
   wndGrid:SetCellText(      nRow, eColumns.Checkmark, ""                                          )
   wndGrid:SetCellLuaData(   nRow, eColumns.Checkmark, false                                       )
@@ -142,18 +150,27 @@ local function SetupRow(wndGrid, tAddonInfo)
   wndGrid:SetCellText(      nRow, eColumns.Author,    "   "..tAddonInfo.strAuthor                 )
 end
 
+local function UpdateAddonsGrid(wndGrid, tAddonsList)
+  wndGrid:DeleteAll()
+  for idx, tAddonInfo in ipairs(tAddonsList) do
+    AddRow(wndGrid, tAddonInfo)
+  end
+end
+
+function AccountWideSettings:UpdateDisplay()
+  UpdateAddonsGrid(self.wndGrid, self.tAddonsList)
+end
+
 function AccountWideSettings:LoadMainWindow()
   if self.wndMain and self.wndMain:IsValid() then
     self.wndMain:Invoke()
-    return
+  else
+    self.wndMain = Apollo.LoadForm(self.xmlDoc, "Main", nil, self)
+    self.wndGrid = self.wndMain:FindChild("Grid")
   end
-  self.tAddonList = self.tAddonList or GetAddonsList()
-  if not self.tAddonList then return end
-  self.wndMain = Apollo.LoadForm(self.xmlDoc, "Main", nil, self)
-  local wndGrid = self.wndMain:FindChild("Grid")
-  for idx, tAddonInfo in ipairs(self.tAddonList) do
-    SetupRow(wndGrid, tAddonInfo)
-  end
+  self.tAddonsList = self.tAddonsList or GetAddonsList()
+  if not self.tAddonsList then return end
+  self:UpdateDisplay()
 end
 
 ---------------
@@ -169,6 +186,11 @@ function AccountWideSettings:OnGridSelChanged(wndHandler, wndControl, nRow, nCol
   wndControl:SetCellLuaData(  nRow, eColumns.Checkmark, bSelected               )
   wndControl:SetCellImage(    nRow, eColumns.Checkmark, strSprite               )
   wndControl:SetCellSortText( nRow, eColumns.Checkmark, strSortPrefix..strAddon )
+end
+
+function AccountWideSettings:OnSearchChanged(wndHandler, wndControl, strText)
+  strFilterSearch = strText
+  self:UpdateDisplay()
 end
 
 ------------------
