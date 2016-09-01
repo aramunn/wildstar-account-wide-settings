@@ -193,6 +193,7 @@ function AccountWideSettings:OnGridSelChanged(wndHandler, wndControl, nRow, nCol
 end
 
 function AccountWideSettings:OnSearchChanged(wndHandler, wndControl, strText)
+  strText = strText or ""
   strFilterSearch = strText
   self:UpdateDisplay()
 end
