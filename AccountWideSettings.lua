@@ -184,7 +184,7 @@ end
 -- ui events --
 ---------------
 
-function AccountWideSettings:OnGridSelChanged(wndHandler, wndControl, nRow, nCol)
+function AccountWideSettings:OnSaveGridSelChanged(wndHandler, wndControl, nRow, nCol)
   if nCol ~= eColumns.Checkmark then return end
   local nIndex = wndControl:GetCellData(nRow, eColumns.Checkmark)
   local bSelected = not self.tAddonsList[nIndex].bSelected
@@ -197,7 +197,7 @@ function AccountWideSettings:OnGridSelChanged(wndHandler, wndControl, nRow, nCol
   self.tAddonsList[nIndex].bSelected = bSelected
 end
 
-function AccountWideSettings:OnSearchChanged(wndHandler, wndControl, strText)
+function AccountWideSettings:OnSaveSearchChanged(wndHandler, wndControl, strText)
   strText = strText or ""
   strFilterSearch = strText
   self:UpdateDisplay()
