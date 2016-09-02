@@ -81,6 +81,7 @@ local function InsertAddonInfo(tAddonsList, strAddonName)
       strName = strAddonName,
       strAuthor = tAddonInfo.strAuthor,
       bCarbine = tAddonInfo.bCarbine,
+      bSelected = false,
     })
   end
 end
@@ -138,24 +139,26 @@ local function SkipRow(tAddonInfo)
   return false
 end
 
-local function AddRow(wndGrid, tAddonInfo)
+local function AddRow(wndGrid, nIndex, tAddonInfo)
   if SkipRow(tAddonInfo) then return end
   local strAddonName = tAddonInfo.strName
   local strAddonAuthor = tAddonInfo.strAuthor
+  local bSelected = tAddonInfo.bSelected
+  local strSprite = bSelected and eSprite.Selected or eSprite.Unselected
+  local strSortPrefix = bSelected and eSortPrefix.Selected or eSortPrefix.Unselected
   local nRow = wndGrid:AddRow(strAddonName)
-  wndGrid:SetCellText(      nRow, eColumns.Checkmark, ""                                    )
-  wndGrid:SetCellLuaData(   nRow, eColumns.Checkmark, false                                 )
-  wndGrid:SetCellImage(     nRow, eColumns.Checkmark, eSprite.Unselected                    )
-  wndGrid:SetCellSortText(  nRow, eColumns.Checkmark, eSortPrefix.Unselected..strAddonName  )
-  wndGrid:SetCellText(      nRow, eColumns.Name,      "   "..strAddonName                   )
-  wndGrid:SetCellLuaData(   nRow, eColumns.Name,      strAddonName                          )
-  wndGrid:SetCellText(      nRow, eColumns.Author,    "   "..strAddonAuthor                 )
+  wndGrid:SetCellText(      nRow, eColumns.Checkmark, ""                          )
+  wndGrid:SetCellLuaData(   nRow, eColumns.Checkmark, nIndex                      )
+  wndGrid:SetCellImage(     nRow, eColumns.Checkmark, strSprite                   )
+  wndGrid:SetCellSortText(  nRow, eColumns.Checkmark, strSortPrefix..strAddonName )
+  wndGrid:SetCellText(      nRow, eColumns.Name,      "   "..strAddonName         )
+  wndGrid:SetCellText(      nRow, eColumns.Author,    "   "..strAddonAuthor       )
 end
 
 local function UpdateAddonsGrid(wndGrid, tAddonsList)
   wndGrid:DeleteAll()
   for idx, tAddonInfo in ipairs(tAddonsList) do
-    AddRow(wndGrid, tAddonInfo)
+    AddRow(wndGrid, idx, tAddonInfo)
   end
 end
 
@@ -183,13 +186,15 @@ end
 
 function AccountWideSettings:OnGridSelChanged(wndHandler, wndControl, nRow, nCol)
   if nCol ~= eColumns.Checkmark then return end
-  local bSelected = not wndControl:GetCellData(nRow, eColumns.Checkmark)
+  local nIndex = wndControl:GetCellData(nRow, eColumns.Checkmark)
+  local bSelected = not self.tAddonsList[nIndex].bSelected
   local strSprite = bSelected and eSprite.Selected or eSprite.Unselected
   local strSortPrefix = bSelected and eSortPrefix.Selected or eSortPrefix.Unselected
-  local strAddon = wndControl:GetCellText(nRow, eColumns.Name) or ""
+  local strAddon = self.tAddonsList[nIndex].strName
   wndControl:SetCellLuaData(  nRow, eColumns.Checkmark, bSelected               )
   wndControl:SetCellImage(    nRow, eColumns.Checkmark, strSprite               )
   wndControl:SetCellSortText( nRow, eColumns.Checkmark, strSortPrefix..strAddon )
+  self.tAddonsList[nIndex].bSelected = bSelected
 end
 
 function AccountWideSettings:OnSearchChanged(wndHandler, wndControl, strText)
