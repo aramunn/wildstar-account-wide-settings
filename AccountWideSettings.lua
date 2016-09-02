@@ -163,7 +163,7 @@ local function UpdateAddonsGrid(wndGrid, tAddonsList)
 end
 
 function AccountWideSettings:UpdateDisplay()
-  UpdateAddonsGrid(self.wndGrid, self.tAddonsList)
+  UpdateAddonsGrid(self.wndSaveGrid, self.tAddonsList)
 end
 
 function AccountWideSettings:LoadMainWindow()
@@ -171,9 +171,11 @@ function AccountWideSettings:LoadMainWindow()
     self.wndMain:Invoke()
   else
     self.wndMain = Apollo.LoadForm(self.xmlDoc, "Main", nil, self)
-    self.wndGrid = self.wndMain:FindChild("Grid")
+    self.wndMain:FindChild("OpenSaveWindow"):SetCheck(true)
+    self.wndSaveGrid = self.wndMain:FindChild("SaveWindow:Grid")
     self.wndMain:FindChild("ShowCustom"):SetCheck(bFilterShowCustom)
     self.wndMain:FindChild("ShowCarbine"):SetCheck(bFilterShowCarbine)
+    self.wndLoadGrid = self.wndMain:FindChild("LoadWindow:Grid")
   end
   self.tAddonsList = self.tAddonsList or GetAddonsList()
   if not self.tAddonsList then return end
@@ -183,6 +185,16 @@ end
 ---------------
 -- ui events --
 ---------------
+
+function AccountWideSettings:OnSaveWindowSelect(wndHandler, wndControl)
+  self.wndMain:FindChild("SaveWindow"):Show(true, true)
+  self.wndMain:FindChild("LoadWindow"):Show(false, true)
+end
+
+function AccountWideSettings:OnLoadWindowSelect(wndHandler, wndControl)
+  self.wndMain:FindChild("SaveWindow"):Show(false, true)
+  self.wndMain:FindChild("LoadWindow"):Show(true, true)
+end
 
 function AccountWideSettings:OnSaveGridSelChanged(wndHandler, wndControl, nRow, nCol)
   if nCol ~= eColumns.Checkmark then return end
