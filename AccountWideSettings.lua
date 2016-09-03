@@ -47,16 +47,23 @@ local karrAddons = {
   -- end
 -- end
 
+--window selection
+local bShowSaveWindow = true
+
 --filters
-local strFilterSearch = ""
+local strFilterAddonSearch = ""
 local bFilterShowCustom = true
 local bFilterShowCarbine = false
+local strFilterRestoreSearch = ""
 
 --enums
 local eColumns = {
   Checkmark = 1,
   Name      = 2,
   Author    = 3,
+  
+  Title = 1,
+  Info = 2,
 }
 local eSortPrefix = {
   Selected    = "1",
@@ -126,21 +133,21 @@ local function GetAddonsList()
   return GetAddonsListFromXml(tAddonsXML, strWildstarDir, strSeperator)
 end
 
--------------
--- display --
--------------
+-------------------
+-- display saver --
+-------------------
 
-local function SkipRow(tAddonInfo)
+local function SkipAddonRow(tAddonInfo)
   if not bFilterShowCarbine and tAddonInfo.bCarbine then return true end
   if not bFilterShowCustom and not tAddonInfo.bCarbine then return true end
-  local strRegex = ".*"..string.lower(strFilterSearch)..".*"
+  local strRegex = ".*"..string.lower(strFilterAddonSearch)..".*"
   local strAddonName = string.lower(tAddonInfo.strName)
   if not string.find(strAddonName, strRegex) then return true end
   return false
 end
 
-local function AddRow(wndGrid, nIndex, tAddonInfo)
-  if SkipRow(tAddonInfo) then return end
+local function AddAddonRow(wndGrid, nIndex, tAddonInfo)
+  if SkipAddonRow(tAddonInfo) then return end
   local strAddonName = tAddonInfo.strName
   local strAddonAuthor = tAddonInfo.strAuthor
   local bSelected = tAddonInfo.bSelected
@@ -155,15 +162,60 @@ local function AddRow(wndGrid, nIndex, tAddonInfo)
   wndGrid:SetCellText(      nRow, eColumns.Author,    "   "..strAddonAuthor       )
 end
 
-local function UpdateAddonsGrid(wndGrid, tAddonsList)
+local function UpdateSaverGrid(wndGrid, tSaverList)
   wndGrid:DeleteAll()
-  for idx, tAddonInfo in ipairs(tAddonsList) do
-    AddRow(wndGrid, idx, tAddonInfo)
+  for idx, tAddonInfo in ipairs(tSaverList) do
+    AddAddonRow(wndGrid, idx, tAddonInfo)
   end
 end
 
+--------------------
+-- display loader --
+--------------------
+
+local function SkipRestoreRow(tRestoreInfo)
+  local strRegex = ".*"..string.lower(strFilterRestoreSearch)..".*"
+  local strRestoreTitle = string.lower(tRestoreInfo.strTitle)
+  if not string.find(strRestoreTitle, strRegex) then return true end
+  return false
+end
+
+local function GenerateRestoreDetails(tRestoreInfo)
+  local strDetails = "Addons in set:"
+  for idx, tAddonInfo in ipairs(tRestoreInfo.tAddons) do
+    strDetails = strDetails.."\n  "..tAddonInfo.strName
+  end
+  return strDetails
+end
+
+local function AddRestoreRow(wndGrid, idx, tRestoreInfo)
+  if SkipRestoreRow(tRestoreInfo) then return end
+  local strRestoreTitle = tRestoreInfo.strTitle
+  local strRestoreInfo = tostring(#tRestoreInfo.tAddons)
+  local strRestoreDetails = GenerateRestoreDetails(tRestoreInfo)
+  local nRow = wndGrid:AddRow(strRestoreTitle)
+  wndGrid:SetCellText(    nRow, eColumns.Title, "   "..strRestoreTitle  )
+  wndGrid:SetCellText(    nRow, eColumns.Info, "   "..strRestoreInfo    )
+  wndGrid:SetCellLuaData( nRow, eColumns.Info, strRestoreDetails        )
+end
+
+local function UpdateLoaderGrid(wndGrid, tLoaderList)
+  wndGrid:DeleteAll()
+  for idx, tRestoreInfo in ipairs(tLoaderList) do
+    AddRestoreRow(wndGrid, idx, tRestoreInfo)
+  end
+end
+
+---------------------
+-- display general --
+---------------------
+
 function AccountWideSettings:UpdateDisplay()
-  UpdateAddonsGrid(self.wndSaveGrid, self.tAddonsList)
+  if bShowSaveWindow then
+    UpdateSaverGrid(self.wndSaveGrid, self.tAddonsList)
+  else
+    UpdateLoaderGrid(self.wndLoadGrid, self.tSave)
+  end
 end
 
 function AccountWideSettings:LoadMainWindow()
@@ -171,14 +223,15 @@ function AccountWideSettings:LoadMainWindow()
     self.wndMain:Invoke()
   else
     self.wndMain = Apollo.LoadForm(self.xmlDoc, "Main", nil, self)
-    self.wndMain:FindChild("OpenSaveWindow"):SetCheck(true)
+    self.wndMain:FindChild("OpenSaveWindow"):SetCheck(bShowSaveWindow)
+    self.wndMain:FindChild("OpenLoadWindow"):SetCheck(not bShowSaveWindow)
     self.wndSaveGrid = self.wndMain:FindChild("SaveWindow:Grid")
     self.wndMain:FindChild("ShowCustom"):SetCheck(bFilterShowCustom)
     self.wndMain:FindChild("ShowCarbine"):SetCheck(bFilterShowCarbine)
     self.wndLoadGrid = self.wndMain:FindChild("LoadWindow:Grid")
+    self.tAddonsList = self.tAddonsList or GetAddonsList() or {}
+    self.tSave = self.tSave or {}
   end
-  self.tAddonsList = self.tAddonsList or GetAddonsList()
-  if not self.tAddonsList then return end
   self:UpdateDisplay()
 end
 
@@ -189,11 +242,15 @@ end
 function AccountWideSettings:OnSaveWindowSelect(wndHandler, wndControl)
   self.wndMain:FindChild("SaveWindow"):Show(true, true)
   self.wndMain:FindChild("LoadWindow"):Show(false, true)
+  bShowSaveWindow = true
+  self:UpdateDisplay()
 end
 
 function AccountWideSettings:OnLoadWindowSelect(wndHandler, wndControl)
   self.wndMain:FindChild("SaveWindow"):Show(false, true)
   self.wndMain:FindChild("LoadWindow"):Show(true, true)
+  bShowSaveWindow = false
+  self:UpdateDisplay()
 end
 
 function AccountWideSettings:OnSaveGridSelChanged(wndHandler, wndControl, nRow, nCol)
@@ -210,8 +267,7 @@ function AccountWideSettings:OnSaveGridSelChanged(wndHandler, wndControl, nRow, 
 end
 
 function AccountWideSettings:OnSaveSearchChanged(wndHandler, wndControl, strText)
-  strText = strText or ""
-  strFilterSearch = strText
+  strFilterAddonSearch = strText or ""
   self:UpdateDisplay()
 end
 
@@ -222,6 +278,22 @@ end
 
 function AccountWideSettings:OnShowCarbineChange(wndHandler, wndControl)
   bFilterShowCarbine = wndControl:IsChecked()
+  self:UpdateDisplay()
+end
+
+function AccountWideSettings:OnLoadGridSelChanged(wndHandler, wndControl, nRow, nCol)
+end
+
+function AccountWideSettings:OnLoadGridGenerateTooltip(wndHandler, wndControl, eType, iRow, iColumn)
+  local strTooltip = ""
+  if iColumn + 1 == eColumns.Info then
+    strTooltip = self.wndLoadGrid:GetCellData(iRow + 1, eColumns.Info)
+  end
+  wndHandler:SetTooltip(strTooltip)
+end
+
+function AccountWideSettings:OnLoadSearchChanged(wndHandler, wndControl, strText)
+  strFilterRestoreSearch = strText or ""
   self:UpdateDisplay()
 end
 
