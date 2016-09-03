@@ -48,6 +48,28 @@ local eSprite = {
   Unselected  = "CRB_DialogSprites:sprDialog_Icon_DisabledCheck",
 }
 
+---------------
+-- the magic --
+---------------
+
+local function GetAddonSaveData(strAddonName)
+  local addon = Apollo.GetAddon(strAddonName)
+  local tData = {}
+  for _, eLevel in pairs(GameLib.CodeEnumAddonSaveLevel) do
+    tData[eLevel] = addon:OnSave(eLevel)
+  end
+  return tData
+end
+
+local function SetAddonSaveData(strAddonName)
+  local addon = Apollo.GetAddon(strAddonName)
+  if not addon then return false end
+  addon.OnSave = function(ref, eLevel)
+    return tAddonInfo.tData[eLevel]
+  end
+  return true
+end
+
 -------------------
 -- addon parsing --
 -------------------
@@ -197,6 +219,7 @@ function AccountWideSettings:InitializeReferences()
   self.wndConfirmButton = self.wndConfirm:FindChild("Confirm")
   self.wndConfirmText = self.wndConfirm:FindChild("Text")
   self.wndConfirmGrid = self.wndConfirm:FindChild("Grid")
+  self.wndDetails = self.wndMain:FindChild("DetailsWindow")
   self.tAddonsList = self.tAddonsList or GetAddonsList() or {}
   self.tSave = self.tSave or {}
 end
@@ -264,6 +287,12 @@ function AccountWideSettings:OnSaveGridSelChanged(wndHandler, wndControl, nRow, 
   self.tAddonsList[nIndex].bSelected = bSelected
   nSaverNumSelected = nSaverNumSelected + (bSelected and 1 or -1)
   self.wndCreateButton:Enable(nSaverNumSelected > 0)
+end
+
+function AccountWideSettings:OnSaveGridDoubleClick(wndHandler, wndControl, nRow, nCol)
+  local nIndex = wndControl:GetCellData(nRow, eColumns.Checkmark)
+  local strAddonName = self.tAddonsList[nIndex].strName
+  self:ShowDetailsWindow(strAddonName)
 end
 
 function AccountWideSettings:OnSaveSearchChanged(wndHandler, wndControl, strText)
@@ -335,6 +364,15 @@ end
 -- confirm ui events --
 -----------------------
 
+function AccountWideSettings:OnConfirmGridDoubleClick(wndHandler, wndControl, nRow, nCol)
+  local tActionData = self.wndConfirmButton:GetData()
+  if not tActionData or not tActionData.tData.tAddons then return end
+  local tAddonInfo = tActionData.tData.tAddons[nRow]
+  local strAddonName = tAddonInfo.strName
+  local tData = tAddonInfo.tData
+  self:ShowDetailsWindow(strAddonName, tData)
+end
+
 function AccountWideSettings:SetConfirmDetails(strAction, strTitle, tAddons)
   local strText = strAction.." Save Set \""..strTitle.."\" that contains the following addons?"
   self.wndConfirmText:SetText(strText)
@@ -349,11 +387,7 @@ function AccountWideSettings:ShowConfirmCreate(strTitle)
   for idx, tAddonInfo in ipairs(self.tAddonsList) do
     if tAddonInfo.bSelected then
       local strAddonName = tAddonInfo.strName
-      local addon = Apollo.GetAddon(strAddonName)
-      local tData = {}
-      for _, eLevel in pairs(GameLib.CodeEnumAddonSaveLevel) do
-        tData[eLevel] = addon:OnSave(eLevel)
-      end
+      local tData = GetAddonSaveData(strAddonName)
       table.insert(tAddons, {
         strName = strAddonName,
         tData = tData,
@@ -419,15 +453,43 @@ function AccountWideSettings:OnConfirmRestore(tData)
   local tRestoreInfo = self.tSave[tData.nIndex]
   for idx, tAddonInfo in ipairs(tRestoreInfo.tAddons) do
     local strAddonName = tAddonInfo.strName
-    local addon = Apollo.GetAddon(strAddonName)
-    if addon then
-      addon.OnSave = function(ref, eLevel)
-        return tAddonInfo.tData[eLevel]
-      end
-    else
+    if not SetAddonSaveData(strAddonName) then
       Print("AWS: Skipped "..strAddonName..". Is it installed/loaded?")
     end
   end
+end
+
+-----------------------
+-- details ui events --
+-----------------------
+
+local function DrillDown(wndTree, nodeBase, data)
+  if type(data) ~= "table" then
+    wndTree:AddNode(nodeBase, tostring(data))
+    return
+  end
+  for k,v in pairs(data) do
+    local node = wndTree:AddNode(nodeBase, tostring(k))
+    DrillDown(wndTree, node, v)
+  end
+end
+
+function AccountWideSettings:ShowDetailsWindow(strAddonName, tData)
+  self.wndDetails:Show(true, true)
+  tData = tData or GetAddonSaveData(strAddonName)
+  local wndTree = self.wndDetails:FindChild("Details")
+  wndTree:DeleteAll()
+  local nodeBase = wndTree:AddNode(0, strAddonName)
+  for strLevel, eLevel in pairs(GameLib.CodeEnumAddonSaveLevel) do
+    if tData[eLevel] then
+      local nodeLevel = wndTree:AddNode(nodeBase, strLevel)
+      DrillDown(wndTree, nodeLevel, tData[eLevel])
+    end
+  end
+end
+
+function AccountWideSettings:OnDetailsClose(wndHandler, wndControl)
+  self.wndDetails:Show(false, true)
 end
 
 ------------------
