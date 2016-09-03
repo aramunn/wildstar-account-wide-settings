@@ -21,7 +21,7 @@ local karrAddons = {
 
 --selection
 local bShowSaveWindow = true
-local nRestoreIndex = 0
+local nLoaderIndex = 0
 
 --filters
 local strFilterAddonSearch = ""
@@ -286,7 +286,7 @@ end
 ----------------------
 
 function AccountWideSettings:OnLoadGridSelChanged(wndHandler, wndControl, nRow, nCol)
-  nRestoreIndex = wndControl:GetCellData(nRow, eColumns.Title)
+  nLoaderIndex = wndControl:GetCellData(nRow, eColumns.Title)
 end
 
 function AccountWideSettings:OnLoadGridGenerateTooltip(wndHandler, wndControl, eType, iRow, iColumn)
@@ -298,14 +298,14 @@ function AccountWideSettings:OnLoadGridGenerateTooltip(wndHandler, wndControl, e
 end
 
 function AccountWideSettings:OnLoadSearchChanged(wndHandler, wndControl, strText)
-  nRestoreIndex = 0
+  nLoaderIndex = 0
   strFilterRestoreSearch = strText or ""
   self:UpdateDisplay()
 end
 
 function AccountWideSettings:OnRestoreSaveSet(wndHandler, wndControl)
-  if nRestoreIndex == 0 then return end
-  local tRestoreInfo = self.tSave[nRestoreIndex]
+  if nLoaderIndex == 0 then return end
+  local tRestoreInfo = self.tSave[nLoaderIndex]
   for idx, tAddonInfo in ipairs(tRestoreInfo.tAddons) do
     local strAddonName = tAddonInfo.strName
     local addon = Apollo.GetAddon(strAddonName)
@@ -320,6 +320,9 @@ function AccountWideSettings:OnRestoreSaveSet(wndHandler, wndControl)
 end
 
 function AccountWideSettings:OnDeleteSaveSet(wndHandler, wndControl)
+  if nLoaderIndex == 0 then return end
+  table.remove(self.tSave, nLoaderIndex)
+  self:UpdateDisplay()
 end
 
 ------------------
