@@ -35,9 +35,8 @@ local eColumns = {
   Checkmark = 1,
   Name      = 2,
   Author    = 3,
-  
   Title = 1,
-  Info = 2,
+  Info  = 2,
 }
 local eSortPrefix = {
   Selected    = "1",
@@ -403,6 +402,7 @@ function AccountWideSettings:ShowConfirmCreate(strTitle)
       tAddons = tAddons,
     },
   })
+  self.wndConfirmButton:SetText("Confirm Create")
   self.wndConfirm:Show(true, true)
 end
 
@@ -415,6 +415,7 @@ function AccountWideSettings:ShowConfirmDelete(nLoaderIndex)
       nIndex = nLoaderIndex
     },
   })
+  self.wndConfirmButton:SetText("Confirm Delete")
   self.wndConfirm:Show(true, true)
 end
 
@@ -427,6 +428,7 @@ function AccountWideSettings:ShowConfirmRestore(nLoaderIndex)
       nIndex = nLoaderIndex
     },
   })
+  self.wndConfirmButton:SetText("Confirm Restore\n(Reloads UI)")
   self.wndConfirm:Show(true, true)
 end
 
@@ -457,6 +459,7 @@ function AccountWideSettings:OnConfirmRestore(tData)
       Print("AWS: Skipped "..strAddonName..". Is it installed/loaded?")
     end
   end
+  RequestReloadUI()
 end
 
 -----------------------
