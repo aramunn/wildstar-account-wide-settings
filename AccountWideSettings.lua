@@ -43,11 +43,11 @@ local function GetAddonSaveData(strAddonName)
   return tData
 end
 
-local function SetAddonSaveData(strAddonName)
+local function SetAddonSaveData(strAddonName, tData)
   local addon = Apollo.GetAddon(strAddonName)
   if not addon then return false end
   addon.OnSave = function(ref, eLevel)
-    return tAddonInfo.tData[eLevel]
+    return tData[eLevel]
   end
   return true
 end
@@ -438,7 +438,7 @@ function AccountWideSettings:OnConfirmRestore(tData)
   local tRestoreInfo = self.tSave[tData.nIndex]
   for idx, tAddonInfo in ipairs(tRestoreInfo.tAddons) do
     local strAddonName = tAddonInfo.strName
-    if not SetAddonSaveData(strAddonName) then
+    if not SetAddonSaveData(strAddonName, tAddonInfo.tData) then
       Print("AWS: Skipped "..strAddonName..". Is it installed/loaded?")
     end
   end
