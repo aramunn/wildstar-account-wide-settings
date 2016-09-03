@@ -191,9 +191,10 @@ function AccountWideSettings:InitializeReferences()
   self.wndCreateButton = self.wndMain:FindChild("SaveWindow:CreateSet")
   self.wndNaming = self.wndCreateButton:FindChild("NamingWindow")
   self.wndLoadGrid = self.wndMain:FindChild("LoadWindow:Grid")
-  self.wndRestoreButton = self.wndMain:FindChild("LoadWindow:RestoreSet")
   self.wndDeleteButton = self.wndMain:FindChild("LoadWindow:DeleteSet")
+  self.wndRestoreButton = self.wndMain:FindChild("LoadWindow:RestoreSet")
   self.wndConfirm = self.wndMain:FindChild("ConfirmWindow")
+  self.wndConfirmButton = self.wndConfirm:FindChild("Confirm")
   self.wndConfirmText = self.wndConfirm:FindChild("Text")
   self.wndConfirmGrid = self.wndConfirm:FindChild("Grid")
   self.tAddonsList = self.tAddonsList or GetAddonsList() or {}
@@ -206,6 +207,8 @@ function AccountWideSettings:InitializeStates()
   self.wndMain:FindChild("ShowCustom"):SetCheck(bFilterShowCustom)
   self.wndMain:FindChild("ShowCarbine"):SetCheck(bFilterShowCarbine)
   self.wndCreateButton:Enable(nSaverNumSelected > 0)
+  self.wndDeleteButton:Enable(nLoaderIndex > 0)
+  self.wndRestoreButton:Enable(nLoaderIndex > 0)
   self.wndNaming:FindChild("SaveSetName"):SetPrompt("Enter a name for this Save Set")
 end
 
@@ -302,6 +305,8 @@ end
 
 function AccountWideSettings:OnLoadGridSelChanged(wndHandler, wndControl, nRow, nCol)
   nLoaderIndex = wndControl:GetCellData(nRow, eColumns.Title)
+  self.wndDeleteButton:Enable(nLoaderIndex > 0)
+  self.wndRestoreButton:Enable(nLoaderIndex > 0)
 end
 
 function AccountWideSettings:OnLoadGridGenerateTooltip(wndHandler, wndControl, eType, iRow, iColumn)
@@ -318,42 +323,26 @@ function AccountWideSettings:OnLoadSearchChanged(wndHandler, wndControl, strText
   self:UpdateDisplay()
 end
 
-function AccountWideSettings:OnRestoreSaveSet(wndHandler, wndControl)
-  if nLoaderIndex == 0 then return end
-  local tRestoreInfo = self.tSave[nLoaderIndex]
-  for idx, tAddonInfo in ipairs(tRestoreInfo.tAddons) do
-    local strAddonName = tAddonInfo.strName
-    local addon = Apollo.GetAddon(strAddonName)
-    if addon then
-      addon.OnSave = function(ref, eLevel)
-        return tAddonInfo.tData[eLevel]
-      end
-    else
-      Print("AWS: Skipped "..strAddonName..". Is it installed/loaded?")
-    end
-  end
+function AccountWideSettings:OnDeleteSaveSet(wndHandler, wndControl)
+  self:ShowConfirmDelete(nLoaderIndex)
 end
 
-function AccountWideSettings:OnDeleteSaveSet(wndHandler, wndControl)
-  if nLoaderIndex == 0 then return end
-  table.remove(self.tSave, nLoaderIndex)
-  self:UpdateDisplay()
+function AccountWideSettings:OnRestoreSaveSet(wndHandler, wndControl)
+  self:ShowConfirmRestore(nLoaderIndex)
 end
 
 -----------------------
 -- confirm ui events --
 -----------------------
 
-function AccountWideSettings:SetConfirmDetails(strPrefix, tAddons)
-  local strText = strPrefix.." that contains the following addons?"
+function AccountWideSettings:SetConfirmDetails(strAction, strTitle, tAddons)
+  local strText = strAction.." Save Set \""..strTitle.."\" that contains the following addons?"
   self.wndConfirmText:SetText(strText)
   self.wndConfirmGrid:DeleteAll()
   for idx, tAddonInfo in ipairs(tAddons) do
     self.wndConfirmGrid:AddRow(tAddonInfo.strName)
   end
 end
-
-local tConfirmSet
 
 function AccountWideSettings:ShowConfirmCreate(strTitle)
   local tAddons = {}
@@ -372,11 +361,38 @@ function AccountWideSettings:ShowConfirmCreate(strTitle)
     end
   end
   if #tAddons == 0 then return end
-  self:SetConfirmDetails("Create Save Set \""..strTitle.."\"", tAddons)
-  tConfirmSet = {
-    strTitle = strTitle,
-    tAddons = tAddons,
-  }
+  self:SetConfirmDetails("Create", strTitle, tAddons)
+  self.wndConfirmButton:SetData({
+    funcAction = self.OnConfirmCreate,
+    tData = {
+      strTitle = strTitle,
+      tAddons = tAddons,
+    },
+  })
+  self.wndConfirm:Show(true, true)
+end
+
+function AccountWideSettings:ShowConfirmDelete(nLoaderIndex)
+  local tRestoreInfo = self.tSave[nLoaderIndex]
+  self:SetConfirmDetails("Delete", tRestoreInfo.strTitle, tRestoreInfo.tAddons)
+  self.wndConfirmButton:SetData({
+    funcAction = self.OnConfirmDelete,
+    tData = {
+      nIndex = nLoaderIndex
+    },
+  })
+  self.wndConfirm:Show(true, true)
+end
+
+function AccountWideSettings:ShowConfirmRestore(nLoaderIndex)
+  local tRestoreInfo = self.tSave[nLoaderIndex]
+  self:SetConfirmDetails("Restore", tRestoreInfo.strTitle, tRestoreInfo.tAddons)
+  self.wndConfirmButton:SetData({
+    funcAction = self.OnConfirmRestore,
+    tData = {
+      nIndex = nLoaderIndex
+    },
+  })
   self.wndConfirm:Show(true, true)
 end
 
@@ -385,10 +401,32 @@ function AccountWideSettings:OnConfirmCancel(wndHandler, wndControl)
 end
 
 function AccountWideSettings:OnConfirmConfirm(wndHandler, wndControl)
-  if bShowSaveWindow then
-    table.insert(self.tSave, tConfirmSet)
-  else
-    Print("Confirm Delete/Restore")
+  local tFuncData = wndControl:GetData()
+  tFuncData.funcAction(self, tFuncData.tData)
+  self:OnConfirmCancel()
+end
+
+function AccountWideSettings:OnConfirmCreate(tData)
+  table.insert(self.tSave, tData)
+end
+
+function AccountWideSettings:OnConfirmDelete(tData)
+  table.remove(self.tSave, tData.nIndex)
+  self:UpdateDisplay()
+end
+
+function AccountWideSettings:OnConfirmRestore(tData)
+  local tRestoreInfo = self.tSave[tData.nIndex]
+  for idx, tAddonInfo in ipairs(tRestoreInfo.tAddons) do
+    local strAddonName = tAddonInfo.strName
+    local addon = Apollo.GetAddon(strAddonName)
+    if addon then
+      addon.OnSave = function(ref, eLevel)
+        return tAddonInfo.tData[eLevel]
+      end
+    else
+      Print("AWS: Skipped "..strAddonName..". Is it installed/loaded?")
+    end
   end
 end
 
