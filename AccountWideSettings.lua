@@ -259,10 +259,26 @@ function AccountWideSettings:OnShowCarbineChange(wndHandler, wndControl)
 end
 
 function AccountWideSettings:OnCreateSaveSet(wndHandler, wndControl)
+  local tAddons = {}
   for idx, tAddonInfo in ipairs(self.tAddonsList) do
     if tAddonInfo.bSelected then
+      local strAddonName = tAddonInfo.strName
+      local addon = Apollo.GetAddon(strAddonName)
+      local tData = {}
+      for _, eLevel in pairs(GameLib.CodeEnumAddonSaveLevel) do
+        tData[eLevel] = addon:OnSave(eLevel)
+      end
+      table.insert(tAddons, {
+        strName = strAddonName,
+        tData = tData,
+      })
     end
   end
+  if #tAddons == 0 then return end
+  table.insert(self.tSave, {
+    strTitle = "my title",
+    tAddons = tAddons,
+  })
 end
 
 ----------------------
