@@ -19,36 +19,9 @@ local karrAddons = {
   "ZenScan",
 }
 
--- function AccountWideSettings:Command(strCmd, strParam)
-  -- if strParam == "save" then
-    -- local tSave = {}
-    -- for idx, strAddon in ipairs(karrAddons) do
-      -- local addon = Apollo.GetAddon(strAddon)
-      -- if not addon then
-        -- Print("AWS: couldn't find \""..strAddon.."\"")
-        -- return
-      -- end
-      -- tSave[strAddon] = {}
-      -- for _, eLevel in pairs(GameLib.CodeEnumAddonSaveLevel) do
-        -- tSave[strAddon][eLevel] = addon:OnSave(eLevel)
-      -- end
-    -- end
-    -- self.tSave = tSave
-    -- Print("AWS: saved")
-  -- end
-  -- if strParam == "load" then
-    -- for idx, strAddon in ipairs(karrAddons) do
-      -- local addon = Apollo.GetAddon(strAddon)
-      -- addon.OnSave = function(ref, eLevel)
-        -- return self.tSave[strAddon][eLevel]
-      -- end
-    -- end
-    -- Print("AWS: loaded - reloadui to apply")
-  -- end
--- end
-
---window selection
+--selection
 local bShowSaveWindow = true
+local nRestoreIndex = 0
 
 --filters
 local strFilterAddonSearch = ""
@@ -188,13 +161,14 @@ local function GenerateRestoreDetails(tRestoreInfo)
   return strDetails
 end
 
-local function AddRestoreRow(wndGrid, idx, tRestoreInfo)
+local function AddRestoreRow(wndGrid, nIndex, tRestoreInfo)
   if SkipRestoreRow(tRestoreInfo) then return end
   local strRestoreTitle = tRestoreInfo.strTitle
   local strRestoreInfo = tostring(#tRestoreInfo.tAddons)
   local strRestoreDetails = GenerateRestoreDetails(tRestoreInfo)
   local nRow = wndGrid:AddRow(strRestoreTitle)
   wndGrid:SetCellText(    nRow, eColumns.Title, "   "..strRestoreTitle  )
+  wndGrid:SetCellLuaData( nRow, eColumns.Title, nIndex                  )
   wndGrid:SetCellText(    nRow, eColumns.Info, "   "..strRestoreInfo    )
   wndGrid:SetCellLuaData( nRow, eColumns.Info, strRestoreDetails        )
 end
@@ -235,9 +209,9 @@ function AccountWideSettings:LoadMainWindow()
   self:UpdateDisplay()
 end
 
----------------
--- ui events --
----------------
+-----------------------
+-- general ui events --
+-----------------------
 
 function AccountWideSettings:OnSaveWindowSelect(wndHandler, wndControl)
   self.wndMain:FindChild("SaveWindow"):Show(true, true)
@@ -253,6 +227,10 @@ function AccountWideSettings:OnLoadWindowSelect(wndHandler, wndControl)
   self:UpdateDisplay()
 end
 
+---------------------
+-- saver ui events --
+---------------------
+
 function AccountWideSettings:OnSaveGridSelChanged(wndHandler, wndControl, nRow, nCol)
   if nCol ~= eColumns.Checkmark then return end
   local nIndex = wndControl:GetCellData(nRow, eColumns.Checkmark)
@@ -260,7 +238,6 @@ function AccountWideSettings:OnSaveGridSelChanged(wndHandler, wndControl, nRow, 
   local strSprite = bSelected and eSprite.Selected or eSprite.Unselected
   local strSortPrefix = bSelected and eSortPrefix.Selected or eSortPrefix.Unselected
   local strAddon = self.tAddonsList[nIndex].strName
-  wndControl:SetCellLuaData(  nRow, eColumns.Checkmark, bSelected               )
   wndControl:SetCellImage(    nRow, eColumns.Checkmark, strSprite               )
   wndControl:SetCellSortText( nRow, eColumns.Checkmark, strSortPrefix..strAddon )
   self.tAddonsList[nIndex].bSelected = bSelected
@@ -281,20 +258,41 @@ function AccountWideSettings:OnShowCarbineChange(wndHandler, wndControl)
   self:UpdateDisplay()
 end
 
+function AccountWideSettings:OnCreateSaveSet(wndHandler, wndControl)
+  for idx, tAddonInfo in ipairs(self.tAddonsList) do
+    if tAddonInfo.bSelected then
+    end
+  end
+end
+
+----------------------
+-- loader ui events --
+----------------------
+
 function AccountWideSettings:OnLoadGridSelChanged(wndHandler, wndControl, nRow, nCol)
+  nRestoreIndex = wndControl:GetCellData(nRow, eColumns.Title)
 end
 
 function AccountWideSettings:OnLoadGridGenerateTooltip(wndHandler, wndControl, eType, iRow, iColumn)
   local strTooltip = ""
   if iColumn + 1 == eColumns.Info then
-    strTooltip = self.wndLoadGrid:GetCellData(iRow + 1, eColumns.Info)
+    strTooltip = self.wndLoadGrid:GetCellData(iRow + 1, eColumns.Info) or ""
   end
   wndHandler:SetTooltip(strTooltip)
 end
 
 function AccountWideSettings:OnLoadSearchChanged(wndHandler, wndControl, strText)
+  nRestoreIndex = 0
   strFilterRestoreSearch = strText or ""
   self:UpdateDisplay()
+end
+
+function AccountWideSettings:OnRestoreSaveSet(wndHandler, wndControl)
+  if nRestoreIndex == 0 then return end
+  local tRestoreInfo = self.tSave[nRestoreIndex]
+end
+
+function AccountWideSettings:OnDeleteSaveSet(wndHandler, wndControl)
 end
 
 ------------------
