@@ -2,23 +2,6 @@ require "Window"
 
 local AccountWideSettings = {}
 
-local karrAddons = {
-  "ChatLog",
-  "CurrencyCount",
-  "DarkMeter",
-  "DiscoTelegraphs",
-  "FrostMod_ThreatBall",
-  "GotHUD",
-  "Healie",
-  "Interruptor",
-  "OhmnaHelper",
-  "PurchaseConfirmation",
-  "TapThat",
-  "tLoot",
-  -- "Translator",
-  "ZenScan",
-}
-
 --selection
 local bShowSaveWindow = true
 local nSaverNumSelected = 0
