@@ -306,6 +306,17 @@ end
 function AccountWideSettings:OnRestoreSaveSet(wndHandler, wndControl)
   if nRestoreIndex == 0 then return end
   local tRestoreInfo = self.tSave[nRestoreIndex]
+  for idx, tAddonInfo in ipairs(tRestoreInfo.tAddons) do
+    local strAddonName = tAddonInfo.strName
+    local addon = Apollo.GetAddon(strAddonName)
+    if addon then
+      addon.OnSave = function(ref, eLevel)
+        return tAddonInfo.tData[eLevel]
+      end
+    else
+      Print("AWS: Skipped "..strAddonName..". Is it installed/loaded?")
+    end
+  end
 end
 
 function AccountWideSettings:OnDeleteSaveSet(wndHandler, wndControl)
