@@ -21,6 +21,7 @@ local karrAddons = {
 
 --selection
 local bShowSaveWindow = true
+local nSaverNumSelected = 0
 local nLoaderIndex = 0
 
 --filters
@@ -184,6 +185,30 @@ end
 -- display general --
 ---------------------
 
+function AccountWideSettings:InitializeReferences()
+  self.wndMain = Apollo.LoadForm(self.xmlDoc, "Main", nil, self)
+  self.wndSaveGrid = self.wndMain:FindChild("SaveWindow:Grid")
+  self.wndCreateButton = self.wndMain:FindChild("SaveWindow:CreateSet")
+  self.wndNaming = self.wndCreateButton:FindChild("NamingWindow")
+  self.wndLoadGrid = self.wndMain:FindChild("LoadWindow:Grid")
+  self.wndRestoreButton = self.wndMain:FindChild("LoadWindow:RestoreSet")
+  self.wndDeleteButton = self.wndMain:FindChild("LoadWindow:DeleteSet")
+  self.wndConfirm = self.wndMain:FindChild("ConfirmWindow")
+  self.wndConfirmText = self.wndConfirm:FindChild("Text")
+  self.wndConfirmGrid = self.wndConfirm:FindChild("Grid")
+  self.tAddonsList = self.tAddonsList or GetAddonsList() or {}
+  self.tSave = self.tSave or {}
+end
+
+function AccountWideSettings:InitializeStates()
+  self.wndMain:FindChild("OpenSaveWindow"):SetCheck(bShowSaveWindow)
+  self.wndMain:FindChild("OpenLoadWindow"):SetCheck(not bShowSaveWindow)
+  self.wndMain:FindChild("ShowCustom"):SetCheck(bFilterShowCustom)
+  self.wndMain:FindChild("ShowCarbine"):SetCheck(bFilterShowCarbine)
+  self.wndCreateButton:Enable(nSaverNumSelected > 0)
+  self.wndNaming:FindChild("SaveSetName"):SetPrompt("Enter a name for this Save Set")
+end
+
 function AccountWideSettings:UpdateDisplay()
   if bShowSaveWindow then
     UpdateSaverGrid(self.wndSaveGrid, self.tAddonsList)
@@ -196,15 +221,8 @@ function AccountWideSettings:LoadMainWindow()
   if self.wndMain and self.wndMain:IsValid() then
     self.wndMain:Invoke()
   else
-    self.wndMain = Apollo.LoadForm(self.xmlDoc, "Main", nil, self)
-    self.wndMain:FindChild("OpenSaveWindow"):SetCheck(bShowSaveWindow)
-    self.wndMain:FindChild("OpenLoadWindow"):SetCheck(not bShowSaveWindow)
-    self.wndSaveGrid = self.wndMain:FindChild("SaveWindow:Grid")
-    self.wndMain:FindChild("ShowCustom"):SetCheck(bFilterShowCustom)
-    self.wndMain:FindChild("ShowCarbine"):SetCheck(bFilterShowCarbine)
-    self.wndLoadGrid = self.wndMain:FindChild("LoadWindow:Grid")
-    self.tAddonsList = self.tAddonsList or GetAddonsList() or {}
-    self.tSave = self.tSave or {}
+    self:InitializeReferences()
+    self:InitializeStates()
   end
   self:UpdateDisplay()
 end
@@ -241,6 +259,8 @@ function AccountWideSettings:OnSaveGridSelChanged(wndHandler, wndControl, nRow, 
   wndControl:SetCellImage(    nRow, eColumns.Checkmark, strSprite               )
   wndControl:SetCellSortText( nRow, eColumns.Checkmark, strSortPrefix..strAddon )
   self.tAddonsList[nIndex].bSelected = bSelected
+  nSaverNumSelected = nSaverNumSelected + (bSelected and 1 or -1)
+  self.wndCreateButton:Enable(nSaverNumSelected > 0)
 end
 
 function AccountWideSettings:OnSaveSearchChanged(wndHandler, wndControl, strText)
@@ -259,26 +279,21 @@ function AccountWideSettings:OnShowCarbineChange(wndHandler, wndControl)
 end
 
 function AccountWideSettings:OnCreateSaveSet(wndHandler, wndControl)
-  local tAddons = {}
-  for idx, tAddonInfo in ipairs(self.tAddonsList) do
-    if tAddonInfo.bSelected then
-      local strAddonName = tAddonInfo.strName
-      local addon = Apollo.GetAddon(strAddonName)
-      local tData = {}
-      for _, eLevel in pairs(GameLib.CodeEnumAddonSaveLevel) do
-        tData[eLevel] = addon:OnSave(eLevel)
-      end
-      table.insert(tAddons, {
-        strName = strAddonName,
-        tData = tData,
-      })
-    end
+  self.wndNaming:Show(true, true)
+  self.wndNaming:FindChild("SaveSetName"):SetFocus()
+end
+
+function AccountWideSettings:OnSaveSetNamingEscape(wndHandler, wndControl)
+  self.wndNaming:Show(false, true)
+end
+
+function AccountWideSettings:OnSaveSetNamingReturn(wndHandler, wndControl, strText)
+  if not strText or strText == "" then
+    self:OnCreateSaveSet()
+    return
   end
-  if #tAddons == 0 then return end
-  table.insert(self.tSave, {
-    strTitle = "my title",
-    tAddons = tAddons,
-  })
+  self.wndNaming:Show(false, true)
+  self:ShowConfirmCreate(strText)
 end
 
 ----------------------
@@ -323,6 +338,58 @@ function AccountWideSettings:OnDeleteSaveSet(wndHandler, wndControl)
   if nLoaderIndex == 0 then return end
   table.remove(self.tSave, nLoaderIndex)
   self:UpdateDisplay()
+end
+
+-----------------------
+-- confirm ui events --
+-----------------------
+
+function AccountWideSettings:SetConfirmDetails(strPrefix, tAddons)
+  local strText = strPrefix.." that contains the following addons?"
+  self.wndConfirmText:SetText(strText)
+  self.wndConfirmGrid:DeleteAll()
+  for idx, tAddonInfo in ipairs(tAddons) do
+    self.wndConfirmGrid:AddRow(tAddonInfo.strName)
+  end
+end
+
+local tConfirmSet
+
+function AccountWideSettings:ShowConfirmCreate(strTitle)
+  local tAddons = {}
+  for idx, tAddonInfo in ipairs(self.tAddonsList) do
+    if tAddonInfo.bSelected then
+      local strAddonName = tAddonInfo.strName
+      local addon = Apollo.GetAddon(strAddonName)
+      local tData = {}
+      for _, eLevel in pairs(GameLib.CodeEnumAddonSaveLevel) do
+        tData[eLevel] = addon:OnSave(eLevel)
+      end
+      table.insert(tAddons, {
+        strName = strAddonName,
+        tData = tData,
+      })
+    end
+  end
+  if #tAddons == 0 then return end
+  self:SetConfirmDetails("Create Save Set \""..strTitle.."\"", tAddons)
+  tConfirmSet = {
+    strTitle = strTitle,
+    tAddons = tAddons,
+  }
+  self.wndConfirm:Show(true, true)
+end
+
+function AccountWideSettings:OnConfirmCancel(wndHandler, wndControl)
+  self.wndConfirm:Show(false, true)
+end
+
+function AccountWideSettings:OnConfirmConfirm(wndHandler, wndControl)
+  if bShowSaveWindow then
+    table.insert(self.tSave, tConfirmSet)
+  else
+    Print("Confirm Delete/Restore")
+  end
 end
 
 ------------------
