@@ -1,1 +1,2 @@
+New in 13.1: small fix
 New in 13.0: initial release
