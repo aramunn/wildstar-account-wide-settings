@@ -1,4 +1,4 @@
-<Addon Author="Aramunn" APIVersion="14" Version="@project-version@" Name="AccountWideSettings" Description="To enable account wide tranferring of addon save data.">
+<Addon Author="Aramunn" APIVersion="15" Version="@project-version@" Name="AccountWideSettings" Description="To enable account wide tranferring of addon save data.">
     <Script Name="AccountWideSettings.lua"/>
     <Form Name="AccountWideSettings.xml"/>
 </Addon>
