@@ -1,3 +1,4 @@
+New in 15.0: version bump to API 15
 New in 14.0: version bump
 New in 13.1: small fix
 New in 13.0: initial release
